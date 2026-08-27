@@ -4,7 +4,7 @@
 ## Notes-frFR: Ajoute un raccourci clavier dédié (Shift+F1 -> Cible de quête pour le configurer, Ctrl+K par défaut) qui cible directement le monstre lié à l'objectif de votre quête en cours -- sans avoir besoin de le voir pour cliquer dessus. La même touche + Shift (Ctrl+Maj+K) cible l'ennemi le plus proche, sans nom à donner. Toggle depuis Local -> Settings -> Module -> Features. Companion addon, ne fait pas partie de Sku officiel.
 ## Notes-deDE: Fuegt eine eigene Tastenkombination hinzu (Shift+F1 -> Questziel anvisieren zum Einstellen, standardmaessig Strg+K), die direkt die Kreatur anvisiert, die zum aktuellen Questziel gehoert -- ohne sie sehen zu muessen. Dieselbe Taste plus Umschalt (Strg+Umschalt+K) anvisiert den naechsten Gegner, ganz ohne Namen.
 ## Author: ZenqFR (built with Claude Code)
-## Version: 1.0.0
+## Version: 1.0.1
 ## Dependencies: Sku
 ## SavedVariables: SkuQuestTargetLog, SkuQuestTargetKeyDB
 
