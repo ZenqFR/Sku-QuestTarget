@@ -1,0 +1,12 @@
+<!-- [2026-08-20] No longer loaded (removed from SkuQuestTarget.toc). The
+     keybind used to be a plain <Binding> calling SkuQuestTarget:
+     TargetNearestQuestMob() directly -- that mechanism is what tried
+     SlashCmdList["TARGET"] and found it didn't exist on this client. The
+     real keybind is now armed at runtime via SetOverrideBindingClick,
+     pointed directly at a secure macro-attribute button (Targeting.lua's
+     EnsureSecureButton), the same combat-safe mechanism Sku's own
+     SKU_KEY_* keybinds use. See Targeting.lua/Menu.lua for the current
+     implementation; this file is kept only as a record of what was tried
+     first. -->
+<Bindings>
+</Bindings>
