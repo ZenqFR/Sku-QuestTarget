@@ -65,13 +65,12 @@ end
 -- defaults (SkuGatherRoute's CTRL-SHIFT-N, SkuBagnonBridge's
 -- CTRL-SHIFT-H/-J) -- free on all three lists.
 --
--- [2026-08-27] Moved from "CTRL-SHIFT-K" to "CTRL-K" so that a Shift
--- variant actually EXISTS for the nearest-enemy binding -- see
--- ShiftVariantOf's own comment below for the full story. The pair is now
--- CTRL-K (quest target) + CTRL-SHIFT-K (nearest enemy), i.e. exactly the
--- two keys this addon already occupied. CTRL-K re-verified free against
--- Sku's own SkuKeyBinds.lua and all sibling addon defaults. Players who
--- already picked their own key are unaffected -- this only applies when
+-- [2026-08-27] Moved from "CTRL-SHIFT-K" to "CTRL-K" so a Shift variant
+-- could exist for the (since-removed, see below) nearest-enemy binding.
+-- Kept at CTRL-K: it is re-verified free against Sku's own SkuKeyBinds.lua
+-- and all sibling addon defaults, and moving it back now would silently
+-- change the key under anyone who has been using it. Players who picked
+-- their own key are unaffected -- this only applies when
 -- SkuQuestTargetKeyDB holds nothing yet.
 local DEFAULT_KEY = "CTRL-K"
 
@@ -99,43 +98,17 @@ end
 -- OnEnable/login, and whenever the user picks a new key from this menu,
 -- both of which are always out-of-combat contexts; refuses cleanly with a
 -- spoken message if somehow called mid-combat rather than throwing).
--- [2026-08-21] "la même touche mais avec shift, cible la plus proche" --
--- the nearest-enemy button (Targeting.lua's EnsureNearestEnemyButton) is
--- armed on the SAME base key plus Shift -- no separate configuration UI, it
--- always follows whatever the main key is.
---
--- [2026-08-27, TWO REAL BUGS FIXED -- this had never worked on a fresh
--- install] The first cut was `"SHIFT-" .. aKey`, guarded by "skip if the
--- key already contains SHIFT". Both halves were wrong:
---
---  1) DEAD ON THE DEFAULT KEY. The default base key was "CTRL-SHIFT-K",
---     which contains "SHIFT-", so the guard fired and the button was never
---     armed at all -- on every fresh install, for a feature the .toc Notes
---     actively advertise. It only ever worked for a base key without Shift
---     (this developer's own key is "<", which is why it went unnoticed).
---     Fixed by moving the default to "CTRL-K", so the Shift variant is
---     "CTRL-SHIFT-K" -- the exact pair of keys this addon already reserved,
---     both verified free against Sku's own SkuKeyBinds.lua defaults and
---     against the three sibling addons.
---
---  2) WRONG MODIFIER POSITION. Blindly prefixing produced "SHIFT-CTRL-K",
---     but WoW's canonical form is "ALT-CTRL-SHIFT-<KEY>" -- Shift goes
---     LAST, not first. "SHIFT-CTRL-K" is a string the keypress never
---     resolves to, so even when it did arm, it armed something dead.
---     Now rebuilt in canonical order instead of concatenated.
---
--- A base key that genuinely already includes Shift still has no available
--- variant; that case stays skipped and logged, and FriendlyShiftKey reports
--- it as unavailable rather than pretending.
-local function ShiftVariantOf(aKey)
-	if not aKey or aKey == "" then return nil end
-	if aKey:find("SHIFT%-") then return nil end
-	local tHasAlt = aKey:find("ALT%-") ~= nil
-	local tHasCtrl = aKey:find("CTRL%-") ~= nil
-	local tBase = aKey:gsub("ALT%-", ""):gsub("CTRL%-", "")
-	return (tHasAlt and "ALT-" or "") .. (tHasCtrl and "CTRL-" or "") .. "SHIFT-" .. tBase
-end
-
+-- [2026-08-29, REMOVED] The Shift variant of the base key used to arm a
+-- second secure button that ran "/cleartarget" + "/targetenemy" ("Cibler
+-- l'ennemi le plus proche"). It was requested as "target the closest thing
+-- to me", but /targetenemy is precisely what the Tab key already does --
+-- the user's own verdict after trying it was "ce que tu m'as fait fait
+-- juste un tab", then "je crois qu'elle est nul[le], à supprimer". Spending
+-- a reserved keybind, a secure button, a persistent teardown path and a
+-- menu row on a duplicate of a key WoW binds by default is a net cost, so
+-- the whole feature is gone rather than left in place unused. The base key
+-- (quest targeting) is untouched, and CTRL-SHIFT-K is released back for the
+-- player to use for anything else.
 local function ArmKeybind()
 	local tBtn = NS.EnsureSecureButton and NS.EnsureSecureButton()
 	if not tBtn then
@@ -155,23 +128,6 @@ local function ArmKeybind()
 		return false
 	end
 	Log("ArmKeybind: bound '%s' to %s.", tKey, tBtn:GetName())
-
-	local tEnemyBtn = NS.EnsureNearestEnemyButton and NS.EnsureNearestEnemyButton()
-	if tEnemyBtn then
-		pcall(ClearOverrideBindings, tEnemyBtn)
-		local tShiftKey = ShiftVariantOf(tKey)
-		if tShiftKey then
-			local tOkShift, tErrShift = pcall(SetOverrideBindingClick, tEnemyBtn, true, tShiftKey, tEnemyBtn:GetName())
-			if tOkShift then
-				Log("ArmKeybind: bound '%s' to %s.", tShiftKey, tEnemyBtn:GetName())
-			else
-				Log("ArmKeybind: SetOverrideBindingClick('%s') THREW: %s", tShiftKey, tostring(tErrShift))
-			end
-		else
-			Log("ArmKeybind: base key '%s' already includes Shift, skipped the nearest-enemy Shift-variant.", tKey)
-		end
-	end
-
 	return true
 end
 NS.ArmKeybind = ArmKeybind
@@ -217,16 +173,6 @@ local function FriendlyBoundKeys()
 	return tKey
 end
 
--- [2026-08-21] Read-only info line for the menu -- the Shift-variant key
--- has no configuration of its own (see ArmKeybind's own comment), so this
--- just states what it currently resolves to, for the same reason every
--- other addon in this family always makes its active keybinds visible from
--- the accessible menu, not just spoken once at capture time.
-local function FriendlyShiftKey()
-	local tKey = GetConfiguredKey() or DEFAULT_KEY
-	return ShiftVariantOf(tKey) or (Sku.deEn and Sku.deEn("nicht verfuegbar (Basistaste enthaelt bereits Shift)", "not available (base key already includes Shift)", "indisponible (la touche de base contient déjà Shift)") or "indisponible (la touche de base contient déjà Shift)")
-end
-
 -- Called from OnEnable -- arms the keybind using whichever key is
 -- configured (the persisted SkuQuestTargetKeyDB.key, or DEFAULT_KEY if the
 -- player has never customized it). Unlike the old SetBinding-based
@@ -252,10 +198,6 @@ local function InstallMenu()
 				{ kind = "action",
 				  label = function() return Sku.deEn and Sku.deEn("Jetzt anvisieren", "Target now", "Cibler maintenant") or "Cibler maintenant" end,
 				  run = function() SkuQuestTarget:TargetNearestQuestMob() end },
-				{ kind = "action",
-				  label = function() return (Sku.deEn and Sku.deEn("Naechsten Gegner anvisieren", "Target nearest enemy", "Cibler l'ennemi le plus proche") or "Cibler l'ennemi le plus proche")
-					.. " (" .. FriendlyShiftKey() .. ")" end,
-				  run = function() SkuQuestTarget:TargetNearestEnemy() end },
 				{ kind = "list",
 				  label = function() return (Sku.deEn and Sku.deEn("Tastenkombination", "Keyboard shortcut", "Raccourci clavier") or "Raccourci clavier")
 					.. " : " .. FriendlyBoundKeys() end,

@@ -1,6 +1,14 @@
 # Changelog
 
 
+
+## [1.1.0]
+
+### Removed
+- **The Shift variant of the targeting key (`Ctrl+Shift+K` by default), which targeted the nearest enemy.** It ran `/cleartarget` + `/targetenemy`, and `/targetenemy` is literally what the Tab key already does — the `/cleartarget` prefix only suppressed the *cycling*, it did not make the search any different from Blizzard's own. Verdict after real use: "ce que tu m'as fait fait juste un tab", then "je crois qu'elle est nul[le], à supprimer". Removed in full — secure button, macro, spoken result, menu row, keybind arming, teardown entry and the `.toc` Notes sentence in all three languages — rather than left in place unused. `Ctrl+Shift+K` is released back to the player. The quest-targeting key itself is untouched.
+
+### Fixed
+- **Disabling this addon from Sku's Features menu now actually stops it.** `OnDisable` was a no-op, so turning "Cible de quête" off left the override binding armed and the key kept targeting. Verified in Sku's own `SkuCore/ModuleManager.lua` that `SkuCore:SetModuleEnabled` really does call `tModule:Disable()`, so the teardown just had to be written: it now releases the override binding via `ClearOverrideBindings`. That call is combat-protected exactly like the one that armed it, so a mid-combat toggle is logged and deferred to the next out-of-combat cycle instead of throwing.
 ## [1.0.1]
 
 ### Fixed

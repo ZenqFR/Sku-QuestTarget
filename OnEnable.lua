@@ -61,6 +61,29 @@ function SkuQuestTarget:SlashCommand(aMsg)
 	or string.format("%d cible(s) de quête : %s", #tParts, tList)))
 end
 
+-- [2026-08-27] OnDisable used to be a no-op, which made Sku's Features
+-- toggle one-way: turning "Cible de quête" OFF left both override bindings
+-- armed, so the key kept targeting. AceAddon really does call this (Sku's
+-- SkuCore:SetModuleEnabled -> tModule:Disable(), ModuleManager.lua), so the
+-- teardown just had to be written.
+--
+-- ClearOverrideBindings is combat-protected, exactly like the SetOverrideBindingClick
+-- that armed them -- if the player toggles the feature off mid-combat we
+-- cannot release the keys right then, so it is logged and left to the next
+-- OnEnable/OnDisable cycle rather than throwing.
 function SkuQuestTarget:OnDisable()
-	Log("OnDisable.")
+	if InCombatLockdown and InCombatLockdown() then
+		Log("OnDisable: in combat, override bindings left armed until the next out-of-combat toggle.")
+		return
+	end
+	-- [2026-08-29] Was a loop over two button names; the second
+	-- (NEAREST_ENEMY_BUTTON_NAME) no longer exists -- see Targeting.lua's
+	-- own REMOVED note. Left as a single explicit release rather than a
+	-- one-element loop.
+	local tBtn = NS.SECURE_BUTTON_NAME and _G[NS.SECURE_BUTTON_NAME]
+	if tBtn then
+		local tOk, tErr = pcall(ClearOverrideBindings, tBtn)
+		if not tOk then Log("OnDisable: ClearOverrideBindings(%s) THREW: %s", tostring(NS.SECURE_BUTTON_NAME), tostring(tErr)) end
+	end
+	Log("OnDisable: override bindings released.")
 end

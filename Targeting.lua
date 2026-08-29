@@ -380,66 +380,6 @@ end
 NS.EnsureSecureButton = EnsureSecureButton
 NS.SECURE_BUTTON_NAME = "SkuQuestTargetSecureButton"
 
----------------------------------------------------------------------------------------------------------------------------------------
--- [2026-08-21] "la même touche mais avec shift, cible la plus proche de
--- moi sans nom à donner, même si elle est derrière moi" -- a second,
--- much simpler secure button, bound to the SAME physical key plus Shift
--- (see Menu.lua's ArmKeybind, which now arms both). Static macro text --
--- nothing to compute, no candidate list, just Blizzard's own built-in
--- "target nearest enemy" command (the exact same thing the default Tab
--- keybind runs).
---
--- Honest limitation, stated up front rather than found the hard way like
--- the main keybind's: `/targetenemy` uses the SAME underlying search Tab
--- itself does, which only considers units the game currently has ready in
--- its nearby-unit list -- not literally everything hostile within some
--- radius regardless of facing. It's noticeably more reliable than
--- physically turning the camera around, but "directly behind you, never
--- rendered this side" can still come up empty -- a WoW engine boundary
--- this addon has no way to route around, not a bug in this mechanism.
-local tNearestEnemyButton
-
-local function EnsureNearestEnemyButton()
-	if tNearestEnemyButton then return tNearestEnemyButton end
-	tNearestEnemyButton = CreateFrame("Button", "SkuQuestTargetNearestEnemyButton", UIParent, "SecureActionButtonTemplate")
-	tNearestEnemyButton:SetAttribute("type1", "macro")
-	-- [2026-08-21] "ce que tu m'as fait fait juste un tab" -- exactly
-	-- right, and the reason is literal: /targetenemy IS Tab, cycle
-	-- behavior included -- with an existing target already in its
-	-- candidate set, it moves on to the NEXT nearest instead of
-	-- re-picking the closest one every time. /cleartarget first forces a
-	-- clean slate on every press, so /targetenemy always has to evaluate
-	-- fresh and genuinely picks the closest one, never cycling forward.
-	tNearestEnemyButton:SetAttribute("macrotext1", "/cleartarget\n/targetenemy")
-	-- [2026-08-22] Same double-fire fix as EnsureSecureButton's own
-	-- "AnyDown" comment above -- "AnyUp","AnyDown" together would run this
-	-- button's whole PreClick/Click/PostClick sequence TWICE per keypress,
-	-- and the second pass would announce "Aucun ennemi à proximité" right
-	-- after correctly targeting one on the first pass (its target is
-	-- already set by then, so the second pass's own GUID comparison finds
-	-- "no change" and reports a miss). "AnyDown" alone still fires
-	-- correctly, just once.
-	tNearestEnemyButton:RegisterForClicks("AnyDown")
-	tNearestEnemyButton:Hide()
-
-	tNearestEnemyButton:SetScript("PreClick", function(self)
-		self.tOriginalGUID = UnitExists("target") and UnitGUID("target") or nil
-	end)
-	tNearestEnemyButton:SetScript("PostClick", function(self)
-		if UnitExists("target") and UnitGUID("target") ~= self.tOriginalGUID then
-			local tNewName = UnitName("target")
-			Announce(tNewName)
-			Log("TargetNearestEnemy: targeted '%s' via /targetenemy.", tostring(tNewName))
-		else
-			Announce(Sku.deEn and Sku.deEn("Kein Gegner in der Naehe", "No enemy nearby", "Aucun ennemi à proximité") or "Aucun ennemi à proximité")
-			Log("TargetNearestEnemy: /targetenemy found nothing (target unchanged).")
-		end
-	end)
-
-	return tNearestEnemyButton
-end
-NS.EnsureNearestEnemyButton = EnsureNearestEnemyButton
-NS.NEAREST_ENEMY_BUTTON_NAME = "SkuQuestTargetNearestEnemyButton"
 
 -- Menu-reachable ("Cibler maintenant"), non-secure fallback -- clicking a
 -- secure button via :Click() from plain Lua is NOT a hardware event, so
@@ -463,15 +403,15 @@ function NS.SkuQuestTarget:TargetNearestQuestMob()
 	TargetNearestQuestMob()
 end
 
--- Same menu-reachable, out-of-combat-only pattern as TargetNearestQuestMob
--- above, for the Shift-variant nearest-enemy button.
-local function TargetNearestEnemy()
-	local tBtn = EnsureNearestEnemyButton()
-	local tOk, tErr = pcall(tBtn.Click, tBtn)
-	if not tOk then Log("TargetNearestEnemy: manual :Click() THREW (expected if in combat): %s", tostring(tErr)) end
-end
-NS.TargetNearestEnemy = TargetNearestEnemy
 
-function NS.SkuQuestTarget:TargetNearestEnemy()
-	TargetNearestEnemy()
-end
+---------------------------------------------------------------------------------------------------------------------------------------
+-- [2026-08-29, REMOVED] EnsureNearestEnemyButton / TargetNearestEnemy --
+-- a second secure button running "/cleartarget" + "/targetenemy", armed on
+-- the base key plus Shift. Its own source comment already conceded the
+-- point ("/targetenemy IS Tab"), and the /cleartarget prefix only removed
+-- the CYCLING, not the duplication: the result was still Blizzard's own
+-- nearest-enemy search on a second keybind. Verdict after real use was
+-- "ce que tu m'as fait fait juste un tab" and then "je crois qu'elle est
+-- nul[le], à supprimer". Removed whole -- button, macro, PostClick
+-- announce, NS exports, Menu.lua's Shift-variant arming and its menu row,
+-- and OnEnable.lua's teardown entry -- rather than left dormant.
